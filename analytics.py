@@ -43,7 +43,7 @@ def run_analytics(file="steam_analysis.csv"):
     all_feature_names = list(ohe_names) + ['price', 'main_story', 'release_month']
     importances = model.named_steps['regressor'].feature_importances_
     
-    feat_data = sorted(zip(all_feature_names, importances), key=lambda x: x[1], reverse=True)[:20]
+    feat_data = sorted(zip(all_feature_names, importances), key=lambda x: x[1], reverse=True)[:10]
     
     # Package for Dashboard (Using the original df for the top_games list to keep all data)
     payload = {
