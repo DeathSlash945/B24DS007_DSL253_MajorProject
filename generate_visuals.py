@@ -10,7 +10,7 @@ def build_final_dashboard(payload_file="dashboard_payload.json"):
         'Sexual Content', 'Nudity', 'Gore', 'Violent', 'NSFW', 'Hentai', 'Adult',
         'Utilities', 'Design & Illustration', 'Education', 'Software Training', 
         'Web Publishing', 'Audio Production', 'Video Production', 'Photo Editing',
-        'Accounting', 'Game Development', 'Documentary', 'Tutorial', 'Animation & Modeling','Sports','Early Access'
+        'Accounting', 'Game Development', 'Documentary', 'Tutorial', 'Animation & Modeling','Sports','Early Access','Unknown'
     ]
     data['genre_list'] = [g for g in data['genre_list'] if g not in blacklist]
     
@@ -157,7 +157,6 @@ def build_final_dashboard(payload_file="dashboard_payload.json"):
             const COLORS = ['#818cf8', '#34d399', '#fbbf24', '#f87171', '#fb7185', '#2dd4bf', '#a78bfa'];
             const GENRE_COLORS = {{'Action': '#818cf8', 'Adventure': '#34d399', 'RPG': '#a78bfa', 'Strategy': '#fbbf24', 'Simulation': '#2dd4bf', 'Indie': '#f472b6'}};
 
-            // Pagination State
             let currentListPool = [];
             let currentPage = 0;
             const PAGE_SIZE = 10;
@@ -177,25 +176,32 @@ def build_final_dashboard(payload_file="dashboard_payload.json"):
                 selected.forEach(genre => {{ pool = pool.concat(appData.top_games.filter(g => g.genres.includes(genre))); }});
 
                 if (pool.length > 0) {{
-                    // Update KPIs and Logic
                     const avgScoreTotal = pool.reduce((a,b) => a + b.overall_success_score, 0) / pool.length;
                     const prices = pool.map(g => g.price).sort((a,b) => a-b);
                     const medianPrice = prices[Math.floor(prices.length/2)];
-                    const topFeatures = appData.feature_importance.slice(0, 2).map(f => f.feat.replace('feat_','').toUpperCase());
+                    const avgLength = pool.reduce((a,b) => a + b.main_story, 0) / pool.length;
+
+                    const budget = pool.filter(g => g.price <= 15).length;
+                    const mid = pool.filter(g => g.price > 15 && g.price <= 35).length;
+                    const premium = pool.filter(g => g.price > 35).length;
+                    const total = pool.length;
+
+                    let priceVerdict = "Balanced Market";
+                    if ((budget/total) < 0.2) priceVerdict = "Budget ($0-15) Entry-level Gap";
+                    else if ((mid/total) < 0.25) priceVerdict = "Mid-Tier ($15-35) Value Gap";
+                    else if ((premium/total) < 0.1) priceVerdict = "Premium ($40+) Quality Gap";
+                    else priceVerdict = budget > mid ? "High Competition in Budget" : "Mid-Tier Saturated";
 
                     document.getElementById('kpi-score').innerText = avgScoreTotal.toFixed(1);
                     document.getElementById('kpi-price').innerText = '$' + medianPrice.toFixed(2);
-                    
-                    const lowRange = pool.filter(g => g.price < 15).length;
-                    const midRange = pool.filter(g => g.price >= 15 && g.price <= 40).length;
-                    document.getElementById('vac-price').innerText = lowRange > midRange ? "Underserved: $20 - $40 Mid-Tier" : "Underserved: $0 - $15 Entry-Tier";
-                    document.getElementById('vac-length').innerText = pool.filter(g => g.main_story > 20).length < (pool.length * 0.2) ? "Shortage of 20hr+ Content" : "20hr+ Market Saturated";
+                    document.getElementById('vac-price').innerText = priceVerdict;
+                    document.getElementById('vac-length').innerText = pool.filter(g => g.main_story > avgLength).length < (total * 0.4) ? `Shortage of ${{avgLength.toFixed(0)}}h+ Content` : "High Content Saturation";
 
+                    const topFeatures = appData.feature_importance.slice(0, 2).map(f => f.feat.replace('feat_','').toUpperCase());
                     document.getElementById('sum-landscape').innerText = `Data for ${{selected.join(' & ')}} shows an avg score of ${{avgScoreTotal.toFixed(1)}}.`;
-                    document.getElementById('sum-opp').innerText = `Median pricing at $${{medianPrice.toFixed(2)}} reveals a clear mid-range gap.`;
-                    document.getElementById('sum-rec').innerText = `Focus on ${{topFeatures[0]}} and ${{topFeatures[1]}} for the highest probability of success.`;
+                    document.getElementById('sum-opp').innerText = `Market opportunity identified in ${{priceVerdict.split(' ')[0]}} segment.`;
+                    document.getElementById('sum-rec').innerText = `Focus on ${{topFeatures[0]}} and ${{topFeatures[1]}} to disrupt this specific segment.`;
 
-                    // Set up Pool for List and Chart
                     const sortedUnique = Array.from(new Map(pool.map(g => [g.name, g])).values()).sort((a,b) => b.overall_success_score - a.overall_success_score);
                     currentListPool = sortedUnique;
                     currentPage = 0;
@@ -205,9 +211,7 @@ def build_final_dashboard(payload_file="dashboard_payload.json"):
                     const usedGenres = [...new Set(top10.map(g => g.genres.split('|')[0]))];
                     document.getElementById('barLegend').innerHTML = usedGenres.map(g => `<div class="flex items-center text-[10px] font-bold text-slate-500"><div class="w-2 h-2 rounded-sm mr-1" style="background:${{GENRE_COLORS[g] || '#475569'}}"></div>${{g.toUpperCase()}}</div>`).join('');
 
-                    // Update Charts
-                    const tiers = {{'0-10':0, '10-20':0, '20-40':0, '40-60':0, '60+':0}};
-                    pool.forEach(g => {{ if(g.price < 10) tiers['0-10']++; else if(g.price < 20) tiers['10-20']++; else if(g.price < 40) tiers['20-40']++; else if(g.price < 60) tiers['40-60']++; else tiers['60+']++; }});
+                    const tiers = {{'0-15':budget, '15-35':mid, '35-60':pool.filter(g => g.price > 35 && g.price <= 60).length, '60+':pool.filter(g => g.price > 60).length}};
                     
                     const genreAverages = selected.map(genre => {{
                         const subPool = appData.top_games.filter(g => g.genres.includes(genre));
@@ -218,10 +222,7 @@ def build_final_dashboard(payload_file="dashboard_payload.json"):
                     updateChart('top10Chart', 'bar', top10.map(g => g.name), [{{ data: top10.map(g => g.overall_success_score), backgroundColor: top10.map(g => GENRE_COLORS[g.genres.split('|')[0]] || '#475569'), borderRadius: 4, barThickness: 15 }}], {{ indexAxis: 'y', plugins: {{ legend: {{ display: false }} }} }});
                     updateChart('lineChart', 'line', ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], selected.map((genre, idx) => ({{ label: genre, data: Array.from({{length: 12}}, (_, i) => {{ const games = appData.top_games.filter(g => g.genres.includes(genre) && new Date(g.release_date).getMonth() === i); return games.length ? games.reduce((a,c) => a + c.overall_success_score, 0) / games.length : 0; }}), borderColor: COLORS[idx % COLORS.length], tension: 0.3, fill: false }})));
                     updateChart('tierChart', 'bar', Object.keys(tiers), [{{ label: 'Game Count', data: Object.values(tiers), backgroundColor: '#818cf8', borderRadius: 4 }}], {{ scales: {{ y: {{ beginAtZero: true }} }} }});
-                    
-                    const minAvg = Math.min(...genreAverages.map(d => d.avg));
-                    updateChart('genreCompareChart', 'bar', genreAverages.map(d => d.genre), [{{ label: 'Avg Success Score', data: genreAverages.map(d => d.avg), backgroundColor: '#34d399', borderRadius: 4 }}], {{ scales: {{ y: {{ min: Math.floor(minAvg - 5), ticks: {{ color: '#94a3b8' }} }} }} }});
-
+                    updateChart('genreCompareChart', 'bar', genreAverages.map(d => d.genre), [{{ label: 'Avg Success Score', data: genreAverages.map(d => d.avg), backgroundColor: '#34d399', borderRadius: 4 }}], {{ scales: {{ y: {{ min: Math.floor(Math.min(...genreAverages.map(d => d.avg)) - 5), ticks: {{ color: '#94a3b8' }} }} }} }});
                     updateChart('bubbleChart', 'bubble', [], selected.map((genre, idx) => ({{ label: genre, data: appData.top_games.filter(g => g.genres.includes(genre)).slice(0, 30).map(g => ({{ x: g.price, y: g.main_story, r: Math.max(g.overall_success_score/4, 4), name: g.name }})), backgroundColor: COLORS[idx % COLORS.length] + '44', borderColor: COLORS[idx % COLORS.length], borderWidth: 1 }})), {{ scales: {{ x: {{ type: 'logarithmic', title: {{ display: true, text: 'Price ($)' }} }}, y: {{ title: {{ display: true, text: 'Hours' }} }} }}, plugins: {{ tooltip: {{ callbacks: {{ label: (ctx) => `${{ctx.raw.name}}: $${{ctx.raw.x}} | ${{ctx.raw.y}}h` }} }} }} }});
                     updateChart('factorChart', 'doughnut', appData.feature_importance.map(f => f.feat.replace('feat_','').toUpperCase()), [{{ data: appData.feature_importance.map(f => f.val), backgroundColor: COLORS }}], {{ cutout: '80%' }});
                 }}
@@ -239,10 +240,21 @@ def build_final_dashboard(payload_file="dashboard_payload.json"):
 
                 document.getElementById('topGamesList').innerHTML = items.map((g, i) => `
                     <div class="flex justify-between items-center py-4">
-                        <div class="flex items-center gap-4"><span class="text-slate-500 font-black text-lg">#${{start + i + 1}}</span>
-                            <div><p class="font-bold text-white text-sm">${{g.name}}</p><p class="text-[10px] text-slate-500 uppercase">${{g.genres.replace(/\|/g, ' / ')}}</p></div>
+                        <div class="flex items-center gap-4 flex-1">
+                            <span class="text-slate-500 font-black text-lg">#${{start + i + 1}}</span>
+                            <div>
+                                <p class="font-bold text-white text-sm">${{g.name}}</p>
+                                <p class="text-[10px] text-slate-500 uppercase">${{g.genres.replace(/\\|/g, ' / ')}}</p>
+                            </div>
                         </div>
-                        <div class="text-right"><p class="text-xs font-bold text-indigo-400">${{g.overall_success_score.toFixed(1)}} pts</p><p class="text-[10px] text-slate-400">$${{g.price.toFixed(2)}} | ${{g.main_story}} hrs</p></div>
+                        <div class="flex-1 text-center px-4">
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${{g.success_tier}}</span>
+                            <p class="text-[10px] text-slate-400 mt-1">${{g.recommendations.toLocaleString()}}% Positive reviews</p>
+                        </div>
+                        <div class="text-right flex-1">
+                            <p class="text-xs font-bold text-indigo-400">${{g.overall_success_score.toFixed(1)}} pts</p>
+                            <p class="text-[10px] text-slate-400">$${{g.price.toFixed(2)}} | ${{g.main_story}} hrs</p>
+                        </div>
                     </div>`).join('');
             }}
 
