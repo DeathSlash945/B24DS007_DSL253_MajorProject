@@ -12,7 +12,7 @@ def calculate_advanced_success(input_file="steam_analysis.csv"):
     
     # We use log1p (log of x+1) to handle zeros and normalize massive outliers
     log_peak = np.log1p(df['all_time_peak'])
-    log_engagement = np.log1p(df['avg_players_30d'] * df['main_story'] *0.5)
+    log_engagement = np.log1p(df['avg_players_30d'] * (df['main_story']+0.01) *0.5)
     def normalize(series):
         if series.max() == series.min(): return 0
         return (series - series.min()) / (series.max() - series.min())

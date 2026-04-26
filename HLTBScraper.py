@@ -47,7 +47,7 @@ class HLTBScraper:
                 df.at[index, 'main_extra'] = times['main_extra']
                 df.at[index, 'completionist'] = times['completionist']
             
-            time.sleep(2)
+            time.sleep(0.5)
             if index % 10 == 0:
                 df.to_csv(self.catalog_file, index=False)
 
