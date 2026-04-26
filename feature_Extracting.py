@@ -29,8 +29,8 @@ def calculate_advanced_success(input_file="steam_analysis.csv"):
     # Updated Weights: Intensity (10%), Quality (30%), ROI (20%), Sentiment (40%)
     df['overall_success_score'] = (
         (intensity * 0.1) + 
-        (quality * 0.25) + 
-        (roi_factor * 0.25) +
+        (quality * 0.3) + 
+        (roi_factor * 0.2) +
         (sentiment * 0.4)
     ) * 100
 
